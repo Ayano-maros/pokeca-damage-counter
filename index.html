@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1, viewport-fit=cover">
 <title>ダメカン計算機</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ダメカン">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2d5a31">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{height:100dvh;height:100vh;overflow:hidden}
@@ -200,6 +207,7 @@
     <div class="sep"></div>
     <button class="cb cb-a" onclick="D(0,1)">0</button>
     <button class="cb cb-a" onclick="allD(10)">全体<br>+10</button>
+    <button class="cb cb-a" onclick="resetAll()" style="font-size:.45rem;color:#e74c3c">全体<br>リセット</button>
   </div>
   <div class="ctrl-row2">
     <button class="cs sp" onclick="tS('poi')">どく</button>
@@ -327,12 +335,15 @@ function togUsd(id){
   c.usd=c.usd?0:1;R();
 }
 function allD(v){
-  const sides=mode==='solo'?['my']:['my','opp'];
-  sides.forEach(h=>{
-    const d=F[h];
-    if(d.b)d.b.d=Math.max(0,d.b.d+v);
-    d.n.forEach(c=>c.d=Math.max(0,c.d+v));
-  });
+  // 選択中カードのサイドだけに適用。未選択ならmy側
+  let side='my';
+  if(sel){for(const h of['my','opp']){
+    if(F[h].b&&F[h].b.id===sel){side=h;break;}
+    if(F[h].n.find(c=>c.id===sel)){side=h;break;}
+  }}
+  const d=F[side];
+  if(d.b)d.b.d=Math.max(0,d.b.d+v);
+  d.n.forEach(c=>c.d=Math.max(0,c.d+v));
   R();
 }
 function endTurn(){
@@ -343,6 +354,12 @@ function endTurn(){
     d.n.forEach(c=>c.usd=0);
   });
   R();
+}
+function resetAll(){
+  if(!confirm('全カードを削除してリセットしますか？'))return;
+  F.my={b:null,n:[],mx:F.my.mx};
+  F.opp={b:null,n:[],mx:F.opp.mx};
+  sel=null;R();
 }
 function delCard(id){
   for(const h of['my','opp']){const d=F[h];
