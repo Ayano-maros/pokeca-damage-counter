@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1, viewport-fit=cover">
+<title>ダメカン計算機</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100dvh;height:100vh;overflow:hidden}
+  @supports(height:100dvh){html,body{height:100dvh}}
+  body{font-family:-apple-system,'Hiragino Sans','Meiryo',sans-serif;background:#2d5a31;user-select:none;
+    display:flex;flex-direction:column;touch-action:manipulation;
+    padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+
+  /* ===== TOP BAR ===== */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:4px 8px;background:rgba(0,0,0,.35);flex-shrink:0;z-index:10;min-height:32px}
+  .topbar .title{font-size:.6rem;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:1px}
+  .mode-sw{display:flex;gap:2px;background:rgba(255,255,255,.1);border-radius:6px;padding:2px}
+  .mode-btn{border:none;border-radius:5px;padding:4px 10px;font-size:.6rem;font-weight:700;cursor:pointer;font-family:inherit;color:rgba(255,255,255,.45);background:transparent;transition:all .15s}
+  .mode-btn.on{background:rgba(255,255,255,.2);color:#fff}
+
+  /* ===== FIELD ===== */
+  .field-wrap{flex:1;overflow:hidden;position:relative;min-height:0}
+  .field{height:100%;width:100%;margin:0 auto;position:relative;
+    background:radial-gradient(ellipse 160px 160px at 50% 50%,rgba(255,255,255,.04),transparent),
+    linear-gradient(180deg,#3a7040,#2d5a31 40%,#2d5a31 60%,#3a7040);
+    display:flex;flex-direction:column}
+
+  .divider{position:absolute;top:50%;left:4%;right:4%;border-top:2px dashed rgba(255,255,255,.15);transform:translateY(-50%);z-index:0;pointer-events:none}
+  .pb{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:50px;height:50px;border:2px solid rgba(255,255,255,.08);border-radius:50%;z-index:0;pointer-events:none}
+  .pb::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:14px;height:14px;border:2px solid rgba(255,255,255,.08);border-radius:50%}
+  .pb::before{content:'';position:absolute;top:50%;left:0;right:0;height:2px;background:rgba(255,255,255,.08);transform:translateY(-50%)}
+
+  .half{flex:1;display:flex;flex-direction:column;position:relative;z-index:1;padding:2px 6px;min-height:0}
+  .half.opp .zone-bench{order:1} .half.opp .zone-battle{order:2}
+  .half.my .zone-battle{order:1} .half.my .zone-bench{order:2}
+  .hlbl{text-align:center;font-size:.45rem;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.2);flex-shrink:0;line-height:1.2}
+  .half.opp .hlbl{order:0} .half.my .hlbl{order:3}
+
+  .zone-battle{display:flex;justify-content:center;align-items:center;flex:1.2;min-height:0}
+  .zone-bench{display:flex;justify-content:center;align-items:center;gap:3px;flex:0.8;flex-wrap:wrap;min-height:0;align-content:center}
+
+  /* bench expand */
+  .bx{position:absolute;right:2px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:1px;z-index:2}
+  .bx button{width:18px;height:18px;border:1px solid rgba(255,255,255,.12);border-radius:3px;background:rgba(0,0,0,.2);color:rgba(255,255,255,.4);font-size:.55rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit}
+  .bx .bn{text-align:center;font-size:.4rem;color:rgba(255,255,255,.3);font-weight:700}
+
+  /* ===== TRASH ZONE ===== */
+  .trash{position:absolute;right:0;top:50%;transform:translateY(-50%);width:30px;height:60px;background:rgba(0,0,0,.15);display:flex;align-items:center;justify-content:center;font-size:1rem;z-index:20;border-left:2px solid rgba(255,255,255,.06);border-radius:6px 0 0 6px;opacity:.4;transition:all .2s}
+  .trash.active{opacity:1;width:46px;background:rgba(192,57,43,.55);border-left-color:rgba(255,255,255,.15)}
+  .trash.hover{background:rgba(192,57,43,.9);width:54px;transform:translateY(-50%) scale(1.05)}
+
+  /* ===== CARD SLOT ===== */
+  .slot{display:flex;flex-direction:column;align-items:center;gap:1px;flex-shrink:0}
+
+  /* ===== CARD ===== */
+  .card{
+    width:13vw;height:17vw;max-width:56px;max-height:74px;
+    background:linear-gradient(145deg,#2c5aa0,#1a3a6e);
+    border:2px solid #3a6abf;border-radius:4px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    cursor:grab;position:relative;
+    box-shadow:0 2px 4px rgba(0,0,0,.3);transition:transform .1s,box-shadow .1s,border-color .1s;flex-shrink:0;gap:1px;
+    touch-action:none}
+  .card.sel{border-color:#fff;box-shadow:0 0 0 2px #fff,0 2px 10px rgba(255,255,255,.2);transform:scale(1.06)}
+  .card.bc{width:16vw;height:21vw;max-width:68px;max-height:90px}
+  .card::before{content:'';position:absolute;inset:3px;border:1px solid rgba(255,255,255,.1);border-radius:2px;pointer-events:none}
+  .card.dragging{opacity:.4;transform:scale(.9)}
+
+  .ghost{position:fixed;z-index:1000;pointer-events:none;transform:translate(-50%,-50%) scale(1.1) rotate(3deg);box-shadow:0 8px 24px rgba(0,0,0,.5);transition:none}
+  .drop-target{border:2px dashed rgba(255,255,255,.5)!important;background:rgba(255,255,255,.08)!important}
+
+  .cd{font-size:min(4vw,1.3rem);font-weight:900;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4);z-index:1}
+  .card.bc .cd{font-size:min(5vw,1.7rem)}
+  .cd.z{color:rgba(255,255,255,.12);font-size:min(3vw,1rem)}
+  .card.bc .cd.z{font-size:min(3.5vw,1.2rem)}
+
+  .ctk{display:flex;gap:1px;flex-wrap:wrap;justify-content:center;max-width:90%;z-index:1;min-height:4px}
+  .t{width:6px;height:6px;border-radius:50%;border:1px solid rgba(0,0,0,.2);flex-shrink:0}
+  .t.r{background:radial-gradient(circle at 30% 30%,#e74c3c,#c0392b)}
+  .t.y{background:radial-gradient(circle at 30% 30%,#f39c12,#d68910);width:7px;height:7px}
+  .t.p{background:radial-gradient(circle at 30% 30%,#8e44ad,#6c3483);width:8px;height:8px}
+
+  .badges{position:absolute;top:-2px;right:-2px;display:flex;flex-direction:column;gap:1px;z-index:3}
+  .bg{font-size:.3rem;font-weight:900;padding:1px 2px;border-radius:2px;color:#fff;line-height:1;white-space:nowrap}
+  .bg-poi{background:#8e44ad} .bg-bur{background:#e67e22} .bg-slp{background:#34495e}
+  .bg-con{background:#c0392b} .bg-par{background:#f1c40f;color:#333}
+
+  .abl-toggle{
+    border:none;border-radius:3px;padding:2px 5px;
+    font-size:.38rem;font-weight:700;font-family:inherit;
+    cursor:pointer;transition:all .1s;
+    background:rgba(255,255,255,.08);color:rgba(255,255,255,.3);min-height:16px}
+  .abl-toggle:active{transform:scale(.9)}
+  .abl-toggle.on{background:#e67e22;color:#fff;box-shadow:0 0 4px rgba(230,126,34,.4)}
+
+  .add{width:13vw;height:17vw;max-width:50px;max-height:66px;border:2px dashed rgba(255,255,255,.12);border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.2);font-size:1rem;transition:all .1s;flex-shrink:0}
+  .add:active{background:rgba(255,255,255,.06)}
+  .add.ba{width:16vw;height:21vw;max-width:58px;max-height:80px}
+
+  /* ===== INFO ===== */
+  .info{flex-shrink:0;text-align:center;font-size:.6rem;font-weight:700;color:rgba(255,255,255,.75);background:rgba(0,0,0,.3);padding:3px 6px;min-height:20px;display:flex;align-items:center;justify-content:center}
+
+  /* ===== CONTROLS ===== */
+  .ctrl{flex-shrink:0;background:#111;padding:5px 4px calc(5px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:4px;align-items:center}
+  .ctrl-row{display:flex;gap:3px;justify-content:center;width:100%;padding:0 2px}
+  .cb{border:none;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer;padding:10px 2px;font-family:inherit;transition:all .06s;color:#fff;flex:1;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center}
+  .cb:active{transform:scale(.92);opacity:.8}
+  .cb-d{background:#c0392b;box-shadow:0 2px 0 #922b21}
+  .cb-h{background:#1e8449;box-shadow:0 2px 0 #145a32}
+  .sep{width:1px;align-self:stretch;background:#333;margin:0 1px;flex:0 0 1px}
+  .cb-a{background:#333;color:#aaa;font-size:.55rem;min-height:44px;line-height:1.1}
+  .cb-a:active{color:#fff}
+
+  .ctrl-row2{display:flex;gap:3px;justify-content:center;width:100%;padding:0 2px;align-items:center}
+  .cs{border:none;border-radius:6px;font-size:.55rem;font-weight:700;cursor:pointer;padding:8px 6px;font-family:inherit;color:#fff;opacity:.5;transition:all .1s;min-height:32px;flex:1;text-align:center}
+  .cs:active{opacity:1} .cs.on{opacity:1;box-shadow:0 0 0 1.5px #fff}
+  .cs.sp{background:#8e44ad} .cs.sb{background:#e67e22} .cs.ss{background:#34495e}
+  .cs.sc{background:#c0392b} .cs.sa{background:#f1c40f;color:#333} .cs.sn{background:#555}
+  .sep2{width:1px;height:24px;background:#333;margin:0 1px;flex-shrink:0}
+  .cb-turn{border:none;border-radius:6px;font-size:.55rem;font-weight:700;cursor:pointer;padding:8px 8px;font-family:inherit;background:#444;color:#ddd;transition:all .1s;min-height:32px;white-space:nowrap}
+  .cb-turn:active{transform:scale(.92);background:#666}
+
+  /* SOLO */
+  .field.solo .half.opp{display:none}
+  .field.solo .divider,.field.solo .pb{display:none}
+  .field.solo .half.my{flex:1}
+  .field.solo .half.my .zone-battle{flex:1.2}
+  .field.solo .half.my .zone-bench{flex:0.8}
+  .field.solo .half.my .hlbl{display:none}
+
+  @keyframes fd{0%,100%{box-shadow:0 2px 4px rgba(0,0,0,.3)}50%{box-shadow:0 0 8px 2px rgba(231,76,60,.4)}}
+  @keyframes fh{0%,100%{box-shadow:0 2px 4px rgba(0,0,0,.3)}50%{box-shadow:0 0 8px 2px rgba(39,174,96,.4)}}
+  .fld{animation:fd .2s} .flh{animation:fh .2s}
+
+  /* small phones (iPhone SE etc) */
+  @media(max-width:370px){
+    .cb{font-size:.72rem;padding:8px 1px}
+    .cs{font-size:.48rem;padding:6px 4px}
+  }
+  /* tall phones - bigger cards */
+  @media(min-height:750px) and (max-width:430px){
+    .card{width:14vw;height:18.5vw} .card.bc{width:17vw;height:22.5vw}
+    .add{width:14vw;height:18.5vw} .add.ba{width:17vw;height:22.5vw}
+  }
+  /* very tall phones (iPhone Pro Max etc) */
+  @media(min-height:850px) and (max-width:430px){
+    .card{width:15vw;height:20vw} .card.bc{width:18vw;height:24vw}
+    .add{width:15vw;height:20vw} .add.ba{width:18vw;height:24vw}
+    .cd{font-size:min(4.5vw,1.5rem)} .card.bc .cd{font-size:min(5.5vw,1.9rem)}
+    .zone-bench{gap:4px}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="title">DAMAGE COUNTER</div>
+  <div class="mode-sw">
+    <button class="mode-btn on" data-m="solo" onclick="setMode('solo')">自分のみ</button>
+    <button class="mode-btn" data-m="vs" onclick="setMode('vs')">対戦</button>
+  </div>
+</div>
+
+<div class="field-wrap">
+  <div class="field solo" id="field">
+    <div class="divider"></div>
+    <div class="pb"></div>
+
+    <div class="half opp">
+      <div class="hlbl">OPPONENT</div>
+      <div class="bx" id="obc"></div>
+      <div class="zone-bench" id="on"></div>
+      <div class="zone-battle" id="ob"></div>
+    </div>
+
+    <div class="half my">
+      <div class="hlbl">YOU</div>
+      <div class="bx" id="mbc"></div>
+      <div class="zone-battle" id="mb"></div>
+      <div class="zone-bench" id="mn"></div>
+    </div>
+
+    <div class="trash" id="trash">🗑</div>
+  </div>
+</div>
+
+<div class="info" id="info">カードをタップして選択 / 長押しでドラッグ移動</div>
+
+<div class="ctrl">
+  <div class="ctrl-row">
+    <button class="cb cb-d" onclick="D(10)">+10</button>
+    <button class="cb cb-d" onclick="D(20)">+20</button>
+    <button class="cb cb-d" onclick="D(30)">+30</button>
+    <button class="cb cb-d" onclick="D(50)">+50</button>
+    <button class="cb cb-d" onclick="D(100)">+100</button>
+    <div class="sep"></div>
+    <button class="cb cb-h" onclick="D(-10)">-10</button>
+    <button class="cb cb-h" onclick="D(-30)">-30</button>
+    <div class="sep"></div>
+    <button class="cb cb-a" onclick="D(0,1)">0</button>
+    <button class="cb cb-a" onclick="allD(10)">全体<br>+10</button>
+  </div>
+  <div class="ctrl-row2">
+    <button class="cs sp" onclick="tS('poi')">どく</button>
+    <button class="cs sb" onclick="tS('bur')">やけど</button>
+    <button class="cs ss" onclick="tS('slp')">ねむり</button>
+    <button class="cs sc" onclick="tS('con')">こんらん</button>
+    <button class="cs sa" onclick="tS('par')">マヒ</button>
+    <button class="cs sn" onclick="tS('none')">なし</button>
+    <div class="sep2"></div>
+    <button class="cb-turn" onclick="endTurn()">ターン終了</button>
+  </div>
+</div>
+
+<script>
+let nid=1,sel=null,mode='solo';
+const F={my:{b:null,n:[],mx:5},opp:{b:null,n:[],mx:5}};
+const mk=()=>({id:nid++,d:0,s:{poi:0,bur:0,slp:0,con:0,par:0},usd:0});
+
+function setMode(m){
+  mode=m;
+  document.getElementById('field').classList.toggle('solo',m==='solo');
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  sel=null;R();
+}
+
+/* ===== RENDER ===== */
+function R(){
+  rH('my');if(mode==='vs')rH('opp');
+  rBC('my');if(mode==='vs')rBC('opp');
+  rI();rSB();
+  bindDrag();
+}
+
+function rH(h){
+  const d=F[h];
+  document.getElementById(h==='my'?'mb':'ob').innerHTML=
+    d.b?slotH(d.b,1):`<div class="add ba" onclick="addC('${h}','b')">+</div>`;
+  const ne=document.getElementById(h==='my'?'mn':'on');
+  let s='';d.n.forEach(c=>s+=slotH(c,0));
+  if(d.n.length<d.mx)s+=`<div class="add" onclick="addC('${h}','n')">+</div>`;
+  ne.innerHTML=s;
+}
+
+function slotH(c,ib){
+  const onCls=c.usd?' on':'';
+  return`<div class="slot">
+    ${cH(c,ib)}
+    <button class="abl-toggle${onCls}" onclick="event.stopPropagation();togUsd(${c.id})">特性${c.usd?'ON':'OFF'}</button>
+  </div>`;
+}
+
+function cH(c,ib){
+  const sl=sel===c.id?' sel':'',bc=ib?' bc':'',dc=c.d===0?' z':'';
+  let tk='';
+  if(c.d>0){let r=c.d,a=Math.floor(r/100);r-=a*100;let b=Math.floor(r/50);r-=b*50;let e=Math.floor(r/10);
+    for(let i=0;i<a;i++)tk+='<span class="t p"></span>';
+    for(let i=0;i<b;i++)tk+='<span class="t y"></span>';
+    for(let i=0;i<e;i++)tk+='<span class="t r"></span>';}
+  let bg='';
+  if(c.s.poi)bg+='<span class="bg bg-poi">どく</span>';
+  if(c.s.bur)bg+='<span class="bg bg-bur">やけど</span>';
+  if(c.s.slp)bg+='<span class="bg bg-slp">ねむり</span>';
+  if(c.s.con)bg+='<span class="bg bg-con">こんらん</span>';
+  if(c.s.par)bg+='<span class="bg bg-par">マヒ</span>';
+  return`<div class="card${bc}${sl}" data-id="${c.id}" data-ib="${ib}">
+    ${bg?`<div class="badges">${bg}</div>`:''}
+    <div class="cd${dc}">${c.d}</div><div class="ctk">${tk}</div></div>`;
+}
+
+function rBC(h){
+  document.getElementById(h==='my'?'mbc':'obc').innerHTML=
+    `<button onclick="cBn('${h}',1)">+</button><div class="bn">${F[h].mx}</div><button onclick="cBn('${h}',-1)">-</button>`;
+}
+
+function rI(){
+  const e=document.getElementById('info'),c=fI(sel);
+  if(!c){e.textContent='カードをタップして選択 / 長押しでドラッグ移動';return;}
+  let loc='';
+  for(const h of['my','opp']){
+    const lb=h==='my'?(mode==='solo'?'':'自分'):'相手';
+    if(F[h].b&&F[h].b.id===sel){loc=lb+'バトル場';break;}
+    const i=F[h].n.findIndex(p=>p.id===sel);
+    if(i!==-1){loc=lb+'ベンチ'+(i+1);break;}}
+  const st=[];
+  if(c.s.poi)st.push('どく');if(c.s.bur)st.push('やけど');if(c.s.slp)st.push('ねむり');
+  if(c.s.con)st.push('こんらん');if(c.s.par)st.push('マヒ');
+  if(c.usd)st.push('特性済');
+  e.textContent=`${loc.trim()}  ${c.d}ダメージ${st.length?' ['+st.join('・')+']':''}`;
+}
+
+function rSB(){
+  const c=fI(sel);
+  document.querySelectorAll('.cs').forEach(b=>{
+    const map={sp:'poi',sb:'bur',ss:'slp',sc:'con',sa:'par'};
+    const m=b.className.match(/s([a-z])\b/);if(!m)return;
+    const k=map['s'+m[1]];
+    b.classList.toggle('on',!!(c&&k&&c.s[k]));
+  });
+}
+
+/* ===== ACTIONS ===== */
+function D(a,rst){
+  const c=fI(sel);if(!c)return;
+  c.d=rst?0:Math.max(0,c.d+a);R();
+  if(!rst){const e=document.querySelector(`[data-id="${sel}"]`);
+    if(e){e.classList.remove('fld','flh');void e.offsetWidth;e.classList.add(a>0?'fld':'flh');}}
+}
+function tS(k){
+  const c=fI(sel);if(!c)return;
+  const all=['poi','bur','slp','con','par'];
+  if(k==='none'){all.forEach(x=>c.s[x]=0);}
+  else{
+    const wasOn=c.s[k];
+    all.forEach(x=>c.s[x]=0);
+    c.s[k]=wasOn?0:1;
+  }
+  R();
+}
+function clearStatus(c){
+  if(!c)return;
+  ['poi','bur','slp','con','par'].forEach(k=>c.s[k]=0);
+}
+function togUsd(id){
+  const c=fI(id);if(!c)return;
+  c.usd=c.usd?0:1;R();
+}
+function allD(v){
+  const sides=mode==='solo'?['my']:['my','opp'];
+  sides.forEach(h=>{
+    const d=F[h];
+    if(d.b)d.b.d=Math.max(0,d.b.d+v);
+    d.n.forEach(c=>c.d=Math.max(0,c.d+v));
+  });
+  R();
+}
+function endTurn(){
+  const sides=mode==='solo'?['my']:['my','opp'];
+  sides.forEach(h=>{
+    const d=F[h];
+    if(d.b)d.b.usd=0;
+    d.n.forEach(c=>c.usd=0);
+  });
+  R();
+}
+function delCard(id){
+  for(const h of['my','opp']){const d=F[h];
+    if(d.b&&d.b.id===id){d.b=null;return;}
+    const i=d.n.findIndex(p=>p.id===id);if(i!==-1){d.n.splice(i,1);return;}}
+}
+function addC(h,z){
+  const c=mk(),d=F[h];
+  if(z==='b'){if(d.b&&d.n.length<d.mx)d.n.push(d.b);d.b=c;}
+  else{if(d.n.length<d.mx)d.n.push(c);}
+  sel=c.id;R();
+}
+function cBn(h,v){F[h].mx=Math.max(1,Math.min(8,F[h].mx+v));R();}
+function fI(id){if(!id)return null;for(const h of['my','opp']){const d=F[h];if(d.b&&d.b.id===id)return d.b;const f=d.n.find(p=>p.id===id);if(f)return f;}return null;}
+
+function findLoc(id){
+  for(const h of['my','opp']){
+    if(F[h].b&&F[h].b.id===id)return{side:h,zone:'b',idx:-1};
+    const i=F[h].n.findIndex(p=>p.id===id);
+    if(i!==-1)return{side:h,zone:'n',idx:i};
+  }
+  return null;
+}
+
+/* ===== DRAG & DROP ===== */
+let dragId=null,ghost=null,longPressTimer=null,isDragging=false;
+const LONG_PRESS_MS=300;
+const trash=document.getElementById('trash');
+
+function bindDrag(){
+  document.querySelectorAll('.card').forEach(el=>{
+    el.addEventListener('pointerdown',onDown,{passive:false});
+  });
+}
+
+function onDown(e){
+  const card=e.currentTarget;
+  const id=+card.dataset.id;
+  const startX=e.clientX,startY=e.clientY;
+  isDragging=false;
+
+  longPressTimer=setTimeout(()=>{
+    startDrag(id,card,startX,startY);
+  },LONG_PRESS_MS);
+
+  const onMove=(ev)=>{
+    if(!isDragging){
+      const dx=ev.clientX-startX,dy=ev.clientY-startY;
+      if(Math.sqrt(dx*dx+dy*dy)>8){
+        clearTimeout(longPressTimer);
+        startDrag(id,card,startX,startY);
+      }
+    }
+    if(isDragging){
+      ev.preventDefault();
+      moveGhost(ev.clientX,ev.clientY);
+      checkTrash(ev.clientX,ev.clientY);
+      checkDropTargets(ev.clientX,ev.clientY);
+    }
+  };
+
+  const onUp=(ev)=>{
+    clearTimeout(longPressTimer);
+    document.removeEventListener('pointermove',onMove);
+    document.removeEventListener('pointerup',onUp);
+    document.removeEventListener('pointercancel',onUp);
+
+    if(isDragging){
+      endDrag(ev.clientX,ev.clientY);
+    } else {
+      sel=sel===id?null:id;R();
+    }
+  };
+
+  document.addEventListener('pointermove',onMove,{passive:false});
+  document.addEventListener('pointerup',onUp);
+  document.addEventListener('pointercancel',onUp);
+}
+
+function startDrag(id,card,x,y){
+  isDragging=true;
+  dragId=id;
+  sel=id;
+  card.classList.add('dragging');
+  trash.classList.add('active');
+
+  ghost=card.cloneNode(true);
+  ghost.classList.remove('dragging','sel');
+  ghost.classList.add('ghost','card');
+  ghost.style.width=card.offsetWidth+'px';
+  ghost.style.height=card.offsetHeight+'px';
+  document.body.appendChild(ghost);
+  moveGhost(x,y);
+}
+
+function moveGhost(x,y){
+  if(!ghost)return;
+  ghost.style.left=x+'px';
+  ghost.style.top=y+'px';
+}
+
+function checkTrash(x,y){
+  const rect=trash.getBoundingClientRect();
+  const inside=x>=rect.left&&y>=rect.top&&y<=rect.bottom;
+  trash.classList.toggle('hover',inside);
+}
+
+function checkDropTargets(x,y){
+  document.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'));
+  if(!ghost)return;
+  ghost.style.display='none';
+  const el=document.elementFromPoint(x,y);
+  ghost.style.display='';
+  if(!el)return;
+  const zone=el.closest('.zone-battle,.zone-bench');
+  if(zone)zone.classList.add('drop-target');
+}
+
+function endDrag(x,y){
+  if(ghost){ghost.remove();ghost=null;}
+  trash.classList.remove('active','hover');
+  document.querySelectorAll('.dragging').forEach(el=>el.classList.remove('dragging'));
+  document.querySelectorAll('.drop-target').forEach(el=>el.classList.remove('drop-target'));
+
+  if(!dragId)return;
+  const trashRect=trash.getBoundingClientRect();
+
+  if(x>=trashRect.left&&y>=trashRect.top&&y<=trashRect.bottom){
+    delCard(dragId);sel=null;dragId=null;isDragging=false;R();return;
+  }
+
+  const el=document.elementFromPoint(x,y);
+  const dropZone=el?el.closest('.zone-battle,.zone-bench'):null;
+
+  if(dropZone){
+    const targetSide=dropZone.closest('.half.my')?'my':'opp';
+    const targetZone=dropZone.classList.contains('zone-battle')?'b':'n';
+    const fromLoc=findLoc(dragId);
+
+    if(fromLoc){
+      const card=fI(dragId);
+      clearStatus(card);
+      if(fromLoc.zone==='b')F[fromLoc.side].b=null;
+      else F[fromLoc.side].n.splice(fromLoc.idx,1);
+
+      if(targetZone==='b'){
+        if(F[targetSide].b){
+          const existing=F[targetSide].b;
+          clearStatus(existing);
+          F[targetSide].b=card;
+          if(fromLoc.zone==='b'&&fromLoc.side===targetSide){
+            if(F[targetSide].n.length<F[targetSide].mx)F[targetSide].n.push(existing);
+          }else if(fromLoc.zone==='b'){
+            F[fromLoc.side].b=existing;
+          }else{
+            if(F[fromLoc.side].n.length<F[fromLoc.side].mx)F[fromLoc.side].n.splice(fromLoc.idx,0,existing);
+            else if(F[targetSide].n.length<F[targetSide].mx)F[targetSide].n.push(existing);
+          }
+        }else{
+          F[targetSide].b=card;
+        }
+      }else{
+        if(F[targetSide].n.length<F[targetSide].mx){
+          F[targetSide].n.push(card);
+        }else{
+          if(fromLoc.zone==='b')F[fromLoc.side].b=card;
+          else F[fromLoc.side].n.splice(fromLoc.idx,0,card);
+        }
+      }
+    }
+  }
+
+  dragId=null;isDragging=false;R();
+}
+
+document.querySelector('.field').addEventListener('click',e=>{
+  if(isDragging)return;
+  if(e.target.closest('.card')||e.target.closest('.add')||e.target.closest('.bx')||e.target.closest('.abl-toggle'))return;
+  sel=null;R();
+});
+
+R();
+</script>
+</body>
+</html>
