@@ -197,7 +197,6 @@
 <div class="ctrl">
   <div class="ctrl-row">
     <button class="cb cb-d" onclick="D(10)">+10</button>
-    <button class="cb cb-d" onclick="D(20)">+20</button>
     <button class="cb cb-d" onclick="D(30)">+30</button>
     <button class="cb cb-d" onclick="D(50)">+50</button>
     <button class="cb cb-d" onclick="D(100)">+100</button>
@@ -207,6 +206,7 @@
     <div class="sep"></div>
     <button class="cb cb-a" onclick="D(0,1)">0</button>
     <button class="cb cb-a" onclick="allD(10)">全体<br>+10</button>
+    <button class="cb cb-a" onclick="benchD(10)">ベンチ<br>+10</button>
     <button class="cb cb-a" onclick="resetAll()" style="font-size:.45rem;color:#e74c3c">全体<br>リセット</button>
   </div>
   <div class="ctrl-row2">
@@ -316,7 +316,13 @@ function D(a,rst){
     if(e){e.classList.remove('fld','flh');void e.offsetWidth;e.classList.add(a>0?'fld':'flh');}}
 }
 function tS(k){
-  const c=fI(sel);if(!c)return;
+  // 状態異常はバトル場のみ。ベンチ選択時は同サイドのバトル場に適用
+  let c=fI(sel);if(!c)return;
+  const loc=findLoc(sel);
+  if(loc&&loc.zone==='n'){
+    c=F[loc.side].b;
+    if(!c)return;
+  }
   const all=['poi','bur','slp','con','par'];
   if(k==='none'){all.forEach(x=>c.s[x]=0);}
   else{
@@ -344,6 +350,15 @@ function allD(v){
   const d=F[side];
   if(d.b)d.b.d=Math.max(0,d.b.d+v);
   d.n.forEach(c=>c.d=Math.max(0,c.d+v));
+  R();
+}
+function benchD(v){
+  let side='my';
+  if(sel){for(const h of['my','opp']){
+    if(F[h].b&&F[h].b.id===sel){side=h;break;}
+    if(F[h].n.find(c=>c.id===sel)){side=h;break;}
+  }}
+  F[side].n.forEach(c=>c.d=Math.max(0,c.d+v));
   R();
 }
 function endTurn(){
